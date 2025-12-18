@@ -15,6 +15,7 @@ import com.kakao.vectormap.KakaoMapReadyCallback
 import com.kakao.vectormap.LatLng
 import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.MapView
+import com.kakao.vectormap.camera.CameraUpdateFactory
 import com.kakao.vectormap.label.LabelOptions
 import com.kakao.vectormap.label.LabelStyle
 import com.kakao.vectormap.label.LabelStyles
@@ -23,7 +24,8 @@ import com.kakao.vectormap.label.LabelStyles
 fun KakaoMap(
     modifier: Modifier = Modifier,
     zones: List<Zone>,
-    onZoneClick: (Zone) -> Unit = {}
+    onZoneClick: (Zone) -> Unit = {},
+    currentLocation: LatLng? = null // New parameter
 ) {
     var mapInstance by remember { mutableStateOf<KakaoMap?>(null) }
     
@@ -31,13 +33,15 @@ fun KakaoMap(
     LaunchedEffect(mapInstance, zones) {
         val map = mapInstance ?: return@LaunchedEffect
         val labelManager = map.labelManager ?: return@LaunchedEffect
-        // Try to get existing layer or add a default one. 
-        // Note: API might require explicit layer creation.
         val layer = labelManager.layer
         
-        // Define a simple style
+        // Clear existing labels before adding new ones
+        layer?.removeAll()
+
+        // Define a simple style (ensure R.drawable.ic_launcher_foreground exists or use a default)
+        // Note: For actual pins, you'd likely use a custom drawable. Using a generic icon for now.
         val styles = labelManager
-            .addLabelStyles(LabelStyles.from(LabelStyle.from(com.example.neogulmap.R.drawable.ic_launcher_foreground)))
+            .addLabelStyles(LabelStyles.from(LabelStyle.from(com.example.neogulmap.R.drawable.pin_logo)))
         
         zones.forEach { zone ->
             try {
@@ -60,6 +64,14 @@ fun KakaoMap(
         }
     }
 
+    // Move map camera when currentLocation changes
+    LaunchedEffect(mapInstance, currentLocation) {
+        val map = mapInstance ?: return@LaunchedEffect
+        currentLocation?.let {
+            map.moveCamera(CameraUpdateFactory.newCenterPosition(it))
+        }
+    }
+
     AndroidView(
         modifier = modifier,
         factory = { context ->
@@ -79,8 +91,10 @@ fun KakaoMap(
                         Log.d("KakaoMap", "Map Ready")
                         mapInstance = kakaoMap
                         
-                        // Enable Tracking if needed (requires permission check outside)
-                        // kakaoMap.trackingManager?.startTracking(mapView.trackingManager)
+                        // Initial camera move if currentLocation is already available
+                        currentLocation?.let {
+                            kakaoMap.moveCamera(CameraUpdateFactory.newCenterPosition(it))
+                        }
                     }
                 }
             )

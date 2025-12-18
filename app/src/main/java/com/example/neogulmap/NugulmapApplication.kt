@@ -1,13 +1,14 @@
 package com.example.neogulmap
 
 import android.app.Application
-import com.kakao.vectormap.KakaoMapSdk
+import com.kakao.sdk.common.KakaoSdk
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
 class NugulmapApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        KakaoMapSdk.init(this, BuildConfig.KAKAO_NATIVE_APP_KEY)
+        // Initialize the Kakao v2 SDK
+        KakaoSdk.init(this, BuildConfig.KAKAO_NATIVE_APP_KEY)
     }
 }

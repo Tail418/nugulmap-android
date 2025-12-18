@@ -32,8 +32,20 @@ android {
         
         buildConfigField("String", "BASE_URL", baseUrl)
         buildConfigField("String", "KAKAO_NATIVE_APP_KEY", "\"$kakaoKey\"")
+        val googleWebClientId = localProperties.getProperty("GOOGLE_WEB_CLIENT_ID") ?: ""
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
+
+        val naverClientId = localProperties.getProperty("NAVER_CLIENT_ID") ?: ""
+        val naverClientSecret = localProperties.getProperty("NAVER_CLIENT_SECRET") ?: ""
+        val naverClientName = localProperties.getProperty("NAVER_CLIENT_NAME") ?: ""
+        buildConfigField("String", "NAVER_CLIENT_ID", "\"$naverClientId\"")
+        buildConfigField("String", "NAVER_CLIENT_SECRET", "\"$naverClientSecret\"")
+        buildConfigField("String", "NAVER_CLIENT_NAME", "\"$naverClientName\"")
         
         manifestPlaceholders["KAKAO_NATIVE_APP_KEY"] = kakaoKey
+        manifestPlaceholders["NAVER_CLIENT_ID"] = naverClientId
+        manifestPlaceholders["NAVER_CLIENT_SECRET"] = naverClientSecret
+        manifestPlaceholders["NAVER_CLIENT_NAME"] = naverClientName
     }
 
     buildTypes {
@@ -67,6 +79,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.extended)
     
     // Navigation
     implementation(libs.androidx.navigation.compose)
@@ -88,8 +101,16 @@ dependencies {
     // DataStore
     implementation(libs.androidx.datastore.preferences)
 
-    // Kakao Map
+    // Kakao
     implementation(libs.kakao.map)
+    implementation(libs.kakao.sdk.user)
+
+    // Naver Login SDK
+    // implementation("com.naver.nid:naveridlogin-android:5.11.0")
+
+    // Google Credential Manager for Sign-In
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    implementation(libs.play.services.location)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
