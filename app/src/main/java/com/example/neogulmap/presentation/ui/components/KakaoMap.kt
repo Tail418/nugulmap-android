@@ -1,54 +1,40 @@
 package com.example.neogulmap.presentation.ui.components
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.util.Log
-import android.widget.Toast
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import com.example.neogulmap.domain.model.Zone
-import com.example.neogulmap.presentation.util.MapUtils
-import com.google.android.gms.location.LocationServices
-import com.kakao.vectormap.KakaoMap
-import com.kakao.vectormap.KakaoMapReadyCallback
-import com.kakao.vectormap.LatLng
-import com.kakao.vectormap.MapLifeCycleCallback
-import com.kakao.vectormap.MapView
-import com.kakao.vectormap.camera.CameraPosition
-import com.kakao.vectormap.camera.CameraUpdateFactory
-import com.kakao.vectormap.label.LabelLayerOptions
-import com.kakao.vectormap.label.LabelOptions
-import com.kakao.vectormap.label.LabelStyle
-import com.kakao.vectormap.label.LabelStyles
+import kotlinx.coroutines.channels.awaitClose
+import com.kakao.vectormap.MapType
+import com.kakao.vectormap.label.Label
+import com.kakao.vectormap.label.LabelManager
+import com.kakao.vectormap.mapwidget.InfoWindowOptions
+import com.kakao.vectormap.mapwidget.infoWindow.InfoWindow
+import com.kakao.vectormap.mapwidget.infoWindow.InfoWindowLayer
+import com.kakao.vectormap.mapwidget.infoWindow.InfoWindowLayerOptions
+import com.kakao.vectormap.mapwidget.infoWindow.InfoWindowOptions.InfoWindowAnchor
+import com.kakao.vectormap.mapwidget.infoWindow.InfoWindowPosition
+import com.kakao.vectormap.mapwidget.infoWindow.InfowindowContent
+import com.kakao.vectormap.mapwidget.infoWindow.DefaultInfowindowContent
+import com.kakao.vectormap.mapwidget.maptype.MapTypeControlOption
+import com.kakao.vectormap.mapwidget.scale.ScaleBarControlOption
+import com.kakao.vectormap.mapwidget.zoom.ZoomControlOption
+
 
 @Composable
 fun KakaoMap(
     modifier: Modifier = Modifier,
     zones: List<Zone>,
-    isLocationPermissionGranted: Boolean = false,
+    currentLocation: Pair<Double, Double>, // Added currentLocation parameter
     onZoneClick: (Zone) -> Unit = {}
 ) {
     var mapInstance by remember { mutableStateOf<KakaoMap?>(null) }
     val context = LocalContext.current
+    
+    // LaunchedEffect to move camera to initial location once map is ready
+    LaunchedEffect(mapInstance) {
+        mapInstance?.let { map ->
+            val targetLatLng = LatLng.from(currentLocation.first, currentLocation.second)
+            val cameraPosition = CameraPosition.from(targetLatLng.latitude, targetLatLng.longitude, 12)
+            map.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition))
+        }
+    }
     
     // Update markers when zones change or map becomes ready
     LaunchedEffect(mapInstance, zones) {
@@ -98,8 +84,8 @@ fun KakaoMap(
             }
         }
         
-        // Move camera to the first zone if available
-        if (zones.isNotEmpty()) {
+        // Move camera to the first zone if available (after initial load, or if currentLocation is updated)
+        if (zones.isNotEmpty() && (map.cameraPosition.position.latitude == 0.0 && map.cameraPosition.position.longitude == 0.0)) { // Only move if map is at default position
             val firstZone = zones[0]
             val targetLatLng = LatLng.from(firstZone.latitude, firstZone.longitude)
             
@@ -159,38 +145,6 @@ fun KakaoMap(
             }
         )
         
-        // Location Button
-        FloatingActionButton(
-            onClick = {
-                if (isLocationPermissionGranted && mapInstance != null) {
-                    try {
-                        val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-                        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                            if (location != null) {
-                                val cameraPosition = CameraPosition.from(
-                                    location.latitude,
-                                    location.longitude,
-                                    15, // Zoom level 15 for My Location
-                                    0.0, 0.0, 0.0
-                                )
-                                mapInstance?.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition))
-                                Log.d("KakaoMap", "Moved to my location: ${location.latitude}, ${location.longitude}")
-                            } else {
-                                Toast.makeText(context, "위치 정보를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    } catch (e: SecurityException) {
-                        Log.e("KakaoMap", "Security Exception: ${e.message}")
-                    }
-                } else {
-                    Toast.makeText(context, "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
-                }
-            },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-        ) {
-            Icon(Icons.Default.Place, contentDescription = "My Location")
-        }
+        // The FloatingActionButton for current location is now in HomeScreen.kt
     }
 }
