@@ -16,7 +16,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
-import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.launch
 
 class ZoneRepositoryImpl @Inject constructor(
     private val api: NugulApi,
@@ -41,51 +42,41 @@ class ZoneRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun getZonesByRadius(latitude: Double, longitude: Double, radius: Int): Flow<Result<List<Zone>>> = flow {
-        // 1. Emit cached data immediately to show something on UI
-        val cachedEntities = zoneDao.getAllZones().first()
-        val cachedData = cachedEntities.map { it.toDomain() }
-        if (cachedData.isNotEmpty()) {
-            emit(Result.success(cachedData))
-        }
+    override suspend fun getZonesByRadius(latitude: Double, longitude: Double, radius: Int): Flow<Result<List<Zone>>> = channelFlow {
+        // 1. Fetch from network in parallel
+        launch(Dispatchers.IO) {
+            try {
+                val apiResponse = api.getAllZonesList()
 
-        // 2. Fetch from network and update DB
-        try {
-            val apiResponse = api.getAllZonesList()
+                if (apiResponse.success && apiResponse.data != null) {
+                    val dtoList = apiResponse.data.zones
+                        ?: apiResponse.data.content
+                        ?: apiResponse.data.zoneList
+                        ?: apiResponse.data.list
+                        ?: apiResponse.data.data
+                        ?: apiResponse.data.result
+                        ?: emptyList()
 
-            if (apiResponse.success && apiResponse.data != null) {
-                val dtoList = apiResponse.data.zones
-                    ?: apiResponse.data.content
-                    ?: apiResponse.data.zoneList
-                    ?: apiResponse.data.list
-                    ?: apiResponse.data.data
-                    ?: apiResponse.data.result
-                    ?: emptyList()
+                    val domainList = dtoList.map { mapToDomain(it) }
 
-                val domainList = dtoList.map { mapToDomain(it) }
-
-                withContext(Dispatchers.IO) {
+                    // Update local DB
                     zoneDao.deleteAll()
                     zoneDao.insertAll(domainList.map { it.toEntity() })
+                } else {
+                    val errorMessage = apiResponse.message ?: "Unknown API error"
+                    // Optionally send error if needed, but main data source is DB
+                    // trySend(Result.failure(Exception(errorMessage))) 
                 }
-            } else {
-                val errorMessage = apiResponse.message ?: "Unknown API error"
-                if (cachedData.isEmpty()) {
-                    emit(Result.failure(Exception(errorMessage)))
-                }
-            }
-        } catch (e: Exception) {
-            if (cachedData.isEmpty()) {
-                emit(Result.failure(Exception("Network error: ${e.message}")))
-            } else {
+            } catch (e: Exception) {
                 e.printStackTrace()
+                // trySend(Result.failure(e))
             }
         }
 
-        // 3. Emit all subsequent changes from the DB
-        emitAll(zoneDao.getAllZones().map { entities -> 
-            Result.success(entities.map { it.toDomain() }) 
-        })
+        // 2. Observe local DB (Source of Truth)
+        zoneDao.getAllZones().collect { entities ->
+            send(Result.success(entities.map { it.toDomain() }))
+        }
     }
 
     override suspend fun createZone(
