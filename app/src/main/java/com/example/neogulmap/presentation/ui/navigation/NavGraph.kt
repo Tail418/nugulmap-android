@@ -17,7 +17,7 @@ import com.example.neogulmap.presentation.ui.navigation.Screen.* // Import all s
 
 @Composable
 fun NavGraph(navController: NavHostController) {
-    NavHost(navController = navController, startDestination = Login.route) {
+    NavHost(navController = navController, startDestination = Home.route) {
         composable(Home.route) {
             HomeScreen(
                 onMenuItemClick = { menuItem ->
