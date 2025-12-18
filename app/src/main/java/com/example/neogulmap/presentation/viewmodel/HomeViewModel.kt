@@ -31,12 +31,12 @@ class HomeViewModel @Inject constructor(
         loadZones()
     }
 
-    fun loadZones() {
+    fun loadZones(latitude: Double = 0.0, longitude: Double = 0.0, radius: Int = 1000) {
         viewModelScope.launch {
-            Log.d("HomeViewModel", "loadZones started.")
+            Log.d("HomeViewModel", "loadZones started with lat=$latitude, lon=$longitude, radius=$radius")
             _isLoading.value = true
             _errorMessage.value = null
-            getZonesUseCase().collect { result ->
+            getZonesUseCase(latitude, longitude, radius).collect { result ->
                 Log.d("HomeViewModel", "Collecting result: $result")
                 result.onSuccess { zoneList ->
                     Log.d("HomeViewModel", "Zones loaded successfully: ${zoneList.size} zones")

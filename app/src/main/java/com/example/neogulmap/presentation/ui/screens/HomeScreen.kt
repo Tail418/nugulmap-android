@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+// import androidx.compose.material3.CircularProgressIndicator // Temporarily commented out
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,6 +46,12 @@ import com.example.neogulmap.presentation.util.MapUtils
 import com.example.neogulmap.presentation.viewmodel.HomeViewModel
 
 import com.example.neogulmap.presentation.ui.components.ProfileMenuItem
+import com.example.neogulmap.presentation.ui.components.CurrentLocationButton // Import CurrentLocationButton
+import com.google.android.gms.location.LocationServices // Import LocationServices
+import com.google.android.gms.location.LocationRequest // Import LocationRequest
+import com.google.android.gms.location.LocationCallback // Import LocationCallback
+import com.google.android.gms.location.LocationResult // Import LocationResult
+import com.google.android.gms.location.Priority // Import Priority for LocationRequest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,36 +65,45 @@ fun HomeScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val context = LocalContext.current
     
-    // Permission logic
-    var isLocationPermissionGranted by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        )
-    }
+    // FusedLocationProviderClient
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+    
+    // State to hold current map center (initially Seoul, updated by actual location)
+    var currentMapCenter by remember { mutableStateOf(Pair(37.5665, 126.9780)) } // Default: Seoul
 
+    // Permission launcher for location
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        isLocationPermissionGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        val isFineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        val isCoarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        val granted = isFineLocationGranted || isCoarseLocationGranted
+
+        if (granted) {
+            // Permission granted, immediately try to get last location or request new one
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                location?.let {
+                    currentMapCenter = Pair(it.latitude, it.longitude)
+                    viewModel.loadZones(it.latitude, it.longitude)
+                } ?: run {
+                    requestLocationUpdates(fusedLocationClient, context) { newLocation ->
+                        currentMapCenter = Pair(newLocation.latitude, newLocation.longitude)
+                        viewModel.loadZones(newLocation.latitude, newLocation.longitude)
+                    }
+                }
+            }
+        } else {
+            Toast.makeText(context, "Location permission denied. Cannot update map to current location.", Toast.LENGTH_SHORT).show()
+        }
     }
 
     LaunchedEffect(Unit) {
-        if (!isLocationPermissionGranted) {
-            permissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
-        }
+        // Initial load for zones using default lat/lon from ViewModel's loadZones()
+        viewModel.loadZones()
     }
     
     LaunchedEffect(zones, isLoading) {
-        if (!isLoading && zones.isEmpty()) {
+        if (!isLoading && zones.isEmpty() && errorMessage == null) { // Only show toast if no error message
             Toast.makeText(context, "No zones found.", Toast.LENGTH_SHORT).show()
         }
     }
@@ -102,7 +117,8 @@ fun HomeScreen(
             zones = zones,
             onZoneClick = { zone ->
                 selectedZone = zone
-            }
+            },
+            currentLocation = currentMapCenter // Pass current location to map
         )
         
         // Debug Status Text (Optional)
@@ -124,12 +140,50 @@ fun HomeScreen(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(text = "Error: $msg", color = androidx.compose.ui.graphics.Color.Red)
-                    Button(onClick = { viewModel.loadZones() }) {
+                    Button(onClick = { 
+                        // Retry with current map center (Seoul default or last known)
+                        viewModel.loadZones(currentMapCenter.first, currentMapCenter.second)
+                    }) {
                         Text("Retry")
                     }
                 }
             }
         }
+        
+        CurrentLocationButton(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            onCurrentLocationClick = {
+                val fineLocationGranted = ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+                val coarseLocationGranted = ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+
+                if (fineLocationGranted || coarseLocationGranted) {
+                    fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                        location?.let {
+                            currentMapCenter = Pair(it.latitude, it.longitude)
+                            viewModel.loadZones(it.latitude, it.longitude)
+                        } ?: run {
+                            requestLocationUpdates(fusedLocationClient, context) { newLocation ->
+                                currentMapCenter = Pair(newLocation.latitude, newLocation.longitude)
+                                viewModel.loadZones(newLocation.latitude, newLocation.longitude)
+                            }
+                        }
+                    }
+                } else {
+                    permissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    )
+                }
+            }
+        )
         
         if (selectedZone != null) {
             ModalBottomSheet(
@@ -193,6 +247,33 @@ fun HomeScreen(
         }
     }
 }
+
+// Helper function to request location updates
+private fun requestLocationUpdates(
+    fusedLocationClient: com.google.android.gms.location.FusedLocationProviderClient,
+    context: android.content.Context,
+    onLocationResult: (android.location.Location) -> Unit
+) {
+    try {
+        val locationRequest = LocationRequest.Builder(
+            Priority.PRIORITY_HIGH_ACCURACY, 10000
+        ).setMinUpdateIntervalMillis(5000)
+            .build()
+
+        val locationCallback = object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult) {
+                locationResult.lastLocation?.let {
+                    onLocationResult(it)
+                    fusedLocationClient.removeLocationUpdates(this) // Remove updates after getting one location
+                }
+            }
+        }
+        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
+    } catch (e: SecurityException) {
+        Toast.makeText(context, "Location permission not granted.", Toast.LENGTH_SHORT).show()
+    }
+}
+
 
 @Composable
 fun ZoneTag(text: String, color: androidx.compose.ui.graphics.Color) {
