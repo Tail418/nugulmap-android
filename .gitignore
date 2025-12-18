@@ -14,6 +14,29 @@
 .cxx
 local.properties
 
-# Ignore backend and frontend directories (monorepo structure during dev)
-dkslm
-/frontend/
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# Backend specific
+backend/venv/
+backend/node_modules/
+backend/.env
+
+# MacOS
+.DS_Store
+
+# Frontend (previously ignored, keeping user setting if intended, but usually we want source)
+# /frontend/  <-- Commenting this out just in case you wanted to commit frontend source code. 
+# If you want to ignore the whole frontend folder, uncomment it. 
+# But for now, I will let specific rules handle node_modules inside it.
