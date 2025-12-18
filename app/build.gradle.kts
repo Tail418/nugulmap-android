@@ -27,13 +27,27 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
-        val baseUrl = localProperties.getProperty("BASE_URL") ?: "http://10.0.2.2:8080"
-        val kakaoKey = localProperties.getProperty("KAKAO_NATIVE_APP_KEY") ?: ""
+        val baseUrl = (localProperties.getProperty("BASE_URL") ?: "http://10.0.2.2:8080").replace("\"", "")
+        val kakaoKey = (localProperties.getProperty("KAKAO_NATIVE_APP_KEY") ?: "").replace("\"", "")
         
-        buildConfigField("String", "BASE_URL", baseUrl)
+        buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
         buildConfigField("String", "KAKAO_NATIVE_APP_KEY", "\"$kakaoKey\"")
         
+        // Social Login Configs (from DevB)
+        val googleWebClientId = (localProperties.getProperty("GOOGLE_WEB_CLIENT_ID") ?: "").replace("\"", "")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
+
+        val naverClientId = (localProperties.getProperty("NAVER_CLIENT_ID") ?: "").replace("\"", "")
+        val naverClientSecret = (localProperties.getProperty("NAVER_CLIENT_SECRET") ?: "").replace("\"", "")
+        val naverClientName = (localProperties.getProperty("NAVER_CLIENT_NAME") ?: "").replace("\"", "")
+        buildConfigField("String", "NAVER_CLIENT_ID", "\"$naverClientId\"")
+        buildConfigField("String", "NAVER_CLIENT_SECRET", "\"$naverClientSecret\"")
+        buildConfigField("String", "NAVER_CLIENT_NAME", "\"$naverClientName\"")
+        
         manifestPlaceholders["KAKAO_NATIVE_APP_KEY"] = kakaoKey
+        manifestPlaceholders["NAVER_CLIENT_ID"] = naverClientId
+        manifestPlaceholders["NAVER_CLIENT_SECRET"] = naverClientSecret
+        manifestPlaceholders["NAVER_CLIENT_NAME"] = naverClientName
     }
 
     buildTypes {
@@ -67,6 +81,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.extended) // From DevB
     
     // Navigation
     implementation(libs.androidx.navigation.compose)
@@ -88,10 +103,12 @@ dependencies {
     // DataStore
     implementation(libs.androidx.datastore.preferences)
 
-    // Kakao Map
+    // Kakao Map & Login
     implementation(libs.kakao.map)
+    implementation(libs.kakao.sdk.user)
 
-    // Google Location
+    // Google Credential Manager & Location
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     implementation(libs.play.services.location)
 
     testImplementation(libs.junit)

@@ -34,7 +34,12 @@ class HomeViewModel @Inject constructor(
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                _zones.value = getZonesUseCase()
+                val result = getZonesUseCase()
+                result.onSuccess { zoneList ->
+                    _zones.value = zoneList
+                }.onFailure { e ->
+                    _errorMessage.value = "Failed to load zones: ${e.message}"
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
                 _errorMessage.value = "Failed to load zones: ${e.message}"

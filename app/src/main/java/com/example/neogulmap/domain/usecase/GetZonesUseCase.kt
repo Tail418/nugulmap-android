@@ -7,7 +7,7 @@ import javax.inject.Inject
 class GetZonesUseCase @Inject constructor(
     private val repository: ZoneRepository
 ) {
-    suspend operator fun invoke(): List<Zone> {
-        return repository.getZones()
+    suspend operator fun invoke(latitude: Double = 0.0, longitude: Double = 0.0, radius: Int = 1000): Result<List<Zone>> {
+        return repository.getZonesByRadius(latitude, longitude, radius)
     }
 }

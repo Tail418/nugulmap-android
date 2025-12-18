@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.pm.PackageManager
 import android.util.Base64
 import android.util.Log
+import com.kakao.sdk.common.KakaoSdk
 import com.kakao.vectormap.KakaoMapSdk
 import dagger.hilt.android.HiltAndroidApp
 import java.security.MessageDigest
@@ -13,19 +14,26 @@ class NugulmapApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         
-        // Log the configured key (masked)
-        val key = BuildConfig.KAKAO_NATIVE_APP_KEY
-        Log.d("KakaoSetup", "Configured Kakao Key: ${key.take(4)}****")
+        val kakaoKey = BuildConfig.KAKAO_NATIVE_APP_KEY
+        Log.d("KakaoSetup", "Configured Kakao Key: ${kakaoKey.take(4)}****")
         
-        // Init SDK
+        // Init Map SDK (Dev A)
         try {
-            KakaoMapSdk.init(this, key)
+            KakaoMapSdk.init(this, kakaoKey)
             Log.d("KakaoSetup", "KakaoMapSdk initialized")
         } catch (e: Exception) {
             Log.e("KakaoSetup", "Failed to init KakaoMapSdk", e)
         }
 
-        // Print Key Hash
+        // Init Login SDK (Dev B)
+        try {
+            KakaoSdk.init(this, kakaoKey)
+            Log.d("KakaoSetup", "Kakao Login SDK initialized")
+        } catch (e: Exception) {
+            Log.e("KakaoSetup", "Failed to init Kakao Login SDK", e)
+        }
+
+        // Print Key Hash for Debugging
         try {
             val info = packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNATURES)
             for (signature in info.signatures) {

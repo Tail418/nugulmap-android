@@ -45,10 +45,14 @@ import com.example.neogulmap.presentation.ui.components.KakaoMap
 import com.example.neogulmap.presentation.util.MapUtils
 import com.example.neogulmap.presentation.viewmodel.HomeViewModel
 
+import com.example.neogulmap.presentation.ui.components.ProfileMenuItem
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: HomeViewModel = hiltViewModel(),
+    onMenuItemClick: (ProfileMenuItem) -> Unit = {},
+    onReportClick: () -> Unit = {}
 ) {
     val zones by viewModel.zones.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
