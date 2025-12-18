@@ -1,5 +1,6 @@
 package com.example.neogulmap.presentation.viewmodel
 
+import android.util.Log // Moved to correct position
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.neogulmap.domain.model.Zone
@@ -10,9 +11,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-@HiltViewModel
-import android.util.Log // Add import
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
