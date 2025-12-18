@@ -13,3 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Ignore backend and frontend directories (monorepo structure during dev)
+/backend/
+/frontend/

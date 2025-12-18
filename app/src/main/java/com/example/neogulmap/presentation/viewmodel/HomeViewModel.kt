@@ -18,6 +18,12 @@ class HomeViewModel @Inject constructor(
 
     private val _zones = MutableStateFlow<List<Zone>>(emptyList())
     val zones: StateFlow<List<Zone>> = _zones.asStateFlow()
+    
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     init {
         loadZones()
@@ -25,7 +31,16 @@ class HomeViewModel @Inject constructor(
 
     fun loadZones() {
         viewModelScope.launch {
-            _zones.value = getZonesUseCase()
+            _isLoading.value = true
+            _errorMessage.value = null
+            try {
+                _zones.value = getZonesUseCase()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _errorMessage.value = "Failed to load zones: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 }
