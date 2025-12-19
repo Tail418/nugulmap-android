@@ -14,19 +14,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
+import androidx.compose.material3.FloatingActionButton // Import FloatingActionButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,13 +47,13 @@ import com.example.neogulmap.presentation.util.MapUtils
 import com.example.neogulmap.presentation.viewmodel.HomeViewModel
 
 import com.example.neogulmap.presentation.ui.components.ProfileMenuItem
-import com.example.neogulmap.presentation.ui.components.CurrentLocationButton // Import CurrentLocationButton
+import com.example.neogulmap.presentation.ui.components.CurrentLocationButton
 import com.example.neogulmap.presentation.ui.components.AddLocationModal // Import AddLocationModal
-import com.google.android.gms.location.LocationServices // Import LocationServices
-import com.google.android.gms.location.LocationRequest // Import LocationRequest
-import com.google.android.gms.location.LocationCallback // Import LocationCallback
-import com.google.android.gms.location.LocationResult // Import LocationResult
-import com.google.android.gms.location.Priority // Import Priority for LocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.Priority
 import com.kakao.vectormap.LatLng // Import LatLng for map long click
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,18 +68,12 @@ fun HomeScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val context = LocalContext.current
     
-    // FusedLocationProviderClient
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     
-    // State to hold current map center (initially Seoul, updated by actual location)
     var currentMapCenter by remember { mutableStateOf(Pair(37.5665, 126.9780)) } // Default: Seoul
+    var showAddLocationModal by remember { mutableStateOf(false) } // State for modal visibility
+    var newZoneLatLng by remember { mutableStateOf<LatLng?>(null) } // State for LatLng from map long press
 
-    // State for AddLocationModal
-    var showAddLocationModal by remember { mutableStateOf(false) }
-    var newZoneLatLng by remember { mutableStateOf<LatLng?>(null) }
-
-
-    // Permission launcher for location
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -89,7 +82,6 @@ fun HomeScreen(
         val granted = isFineLocationGranted || isCoarseLocationGranted
 
         if (granted) {
-            // Permission granted, immediately try to get last location or request new one
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 location?.let {
                     currentMapCenter = Pair(it.latitude, it.longitude)
@@ -163,11 +155,11 @@ fun HomeScreen(
             }
         }
         
-        // Current Location Button (bottom end)
+        // Current Location Button (bottom left)
         CurrentLocationButton(
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(bottom = 80.dp, end = 16.dp), // Adjust padding to make space for Add button
+                .align(Alignment.BottomStart) // Align to bottom-left
+                .padding(start = 16.dp, bottom = 16.dp),
             onCurrentLocationClick = {
                 val fineLocationGranted = ContextCompat.checkSelfPermission(
                     context, Manifest.permission.ACCESS_FINE_LOCATION
@@ -184,7 +176,7 @@ fun HomeScreen(
                         } ?: run {
                             requestLocationUpdates(fusedLocationClient, context) { newLocation ->
                                 currentMapCenter = Pair(newLocation.latitude, newLocation.longitude)
-                                viewModel.loadZones(newLocation.latitude, newZoneLatLng = null)
+                                viewModel.loadZones(newLocation.latitude, newLocation.longitude)
                             }
                         }
                     }
@@ -199,23 +191,51 @@ fun HomeScreen(
             }
         )
         
-        // Add Smoking Zone Floating Action Button (bottom end, above current location button)
+        // Floating Action Button to open AddLocationModal
         FloatingActionButton(
-            onClick = { 
-                newZoneLatLng = null // Reset LatLng for manual input or map long-press
-                showAddLocationModal = true 
+            onClick = {
+                val fineLocationGranted = ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+                val coarseLocationGranted = ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+
+                if (fineLocationGranted || coarseLocationGranted) {
+                    newZoneLatLng = null // Reset LatLng for manual input or map long-press
+                    showAddLocationModal = true
+                } else {
+                    permissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    )
+                }
             },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(bottom = 16.dp, end = 16.dp)
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Smoking Zone")
+            Icon(Icons.Default.Add, contentDescription = "흡연구역 추가")
         }
-
+        
+        // AddLocationModal
+        if (showAddLocationModal) {
+            AddLocationModal(
+                isOpen = showAddLocationModal,
+                onClose = {
+                    showAddLocationModal = false
+                    // Reload zones when the modal is closed (after successful creation or cancellation)
+                    viewModel.loadZones(currentMapCenter.first, currentMapCenter.second)
+                }
+            )
+        }
+        
         if (selectedZone != null) {
             ModalBottomSheet(
                 onDismissRequest = { selectedZone = null },
-                sheetState = sheetState
+                sheetState = rememberModalBottomSheetState()
             ) {
                 // Sheet Content matching Frontend style
                 Column(
@@ -272,18 +292,8 @@ fun HomeScreen(
                 }
             }
         }
-
-        if (showAddLocationModal) {
-            AddLocationModal(
-                initialLatLng = newZoneLatLng,
-                onDismiss = { showAddLocationModal = false },
-                onAddLocation = { lat, lon, name, address, type, imageUri ->
-                    viewModel.createZone(lat, lon, name, address, type, "current_user_id", imageUri) // TODO: Get actual user ID
-                    showAddLocationModal = false
-                }
-            )
-        }
     }
+    
 }
 
 // Helper function to request location updates
