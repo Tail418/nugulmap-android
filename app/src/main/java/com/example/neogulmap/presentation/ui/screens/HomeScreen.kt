@@ -73,6 +73,7 @@ fun HomeScreen(
     var currentMapCenter by remember { mutableStateOf(Pair(37.5665, 126.9780)) } // Default: Seoul
     var showAddLocationModal by remember { mutableStateOf(false) } // State for modal visibility
     var newZoneLatLng by remember { mutableStateOf<LatLng?>(null) } // State for LatLng from map long press
+    var mapMoveTrigger by remember { mutableStateOf(0) } // Trigger to force map move
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -123,7 +124,8 @@ fun HomeScreen(
                 newZoneLatLng = latLng
                 showAddLocationModal = true
             },
-            currentLocation = currentMapCenter // Pass current location to map
+            currentLocation = currentMapCenter, // Pass current location to map
+            cameraMoveState = mapMoveTrigger
         )
         
         // Debug Status Text (Optional)
@@ -169,13 +171,16 @@ fun HomeScreen(
                 ) == PackageManager.PERMISSION_GRANTED
 
                 if (fineLocationGranted || coarseLocationGranted) {
-                    fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                    val priority = if (fineLocationGranted) Priority.PRIORITY_HIGH_ACCURACY else Priority.PRIORITY_BALANCED_POWER_ACCURACY
+                    fusedLocationClient.getCurrentLocation(priority, null).addOnSuccessListener { location ->
                         location?.let {
                             currentMapCenter = Pair(it.latitude, it.longitude)
+                            mapMoveTrigger++
                             viewModel.loadZones(it.latitude, it.longitude)
                         } ?: run {
                             requestLocationUpdates(fusedLocationClient, context) { newLocation ->
                                 currentMapCenter = Pair(newLocation.latitude, newLocation.longitude)
+                                mapMoveTrigger++
                                 viewModel.loadZones(newLocation.latitude, newLocation.longitude)
                             }
                         }

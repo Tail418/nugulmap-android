@@ -1,3 +1,5 @@
+package com.example.neogulmap.presentation.viewmodel
+
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel

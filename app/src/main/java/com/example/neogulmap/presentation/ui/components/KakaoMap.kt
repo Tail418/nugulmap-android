@@ -3,22 +3,15 @@ package com.example.neogulmap.presentation.ui.components
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
-import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.neogulmap.domain.model.Zone
 import com.example.neogulmap.presentation.util.MapUtils
@@ -34,37 +27,59 @@ import com.kakao.vectormap.label.LabelOptions
 import com.kakao.vectormap.label.LabelStyle
 import com.kakao.vectormap.label.LabelStyles
 
-
 @Composable
 fun KakaoMap(
     modifier: Modifier = Modifier,
     zones: List<Zone>,
     currentLocation: Pair<Double, Double>,
     onZoneClick: (Zone) -> Unit = {},
-    onMapLongClick: (LatLng) -> Unit = {} // Added onMapLongClick callback
+    onMapLongClick: (LatLng) -> Unit = {},
+    cameraMoveState: Int = 0
 ) {
     var mapInstance by remember { mutableStateOf<KakaoMap?>(null) }
+    var isMapInitialized by remember { mutableStateOf(false) }
     val context = LocalContext.current
     
-    // LaunchedEffect to move camera to initial location once map is ready
+    // 1. Initial Map Setup (Run ONCE when map becomes ready)
     LaunchedEffect(mapInstance) {
-        mapInstance?.let { map ->
-            val targetLatLng = LatLng.from(currentLocation.first, currentLocation.second)
-            val cameraPosition = CameraPosition.from(targetLatLng.latitude, targetLatLng.longitude, 12, 0.0, 0.0, 0.0)
-            map.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition))
-
-            // Set up map long click listener
-            map.setOnMapLongClickListener { kakaoMap, latLng ->
+        val map = mapInstance ?: return@LaunchedEffect
+        
+        if (!isMapInitialized) {
+            val target = LatLng.from(currentLocation.first, currentLocation.second)
+            map.moveCamera(CameraUpdateFactory.newCenterPosition(target))
+            
+            // Set up listeners
+            map.setOnTerrainLongClickListener { _, latLng, _ ->
                 onMapLongClick(latLng)
                 Log.d("KakaoMap", "Map Long Clicked at: $latLng")
+            }
+            
+            map.setOnLabelClickListener { _, _, label ->
+                val clickedZone = label.tag as? Zone
+                clickedZone?.let { onZoneClick(it) }
+                true
+            }
+            
+            isMapInitialized = true
+            Log.d("KakaoMap", "Initial Camera Move to $target")
+        }
+    }
+
+    // 2. User Triggered Move (Only when button is pressed)
+    LaunchedEffect(cameraMoveState) {
+        if (cameraMoveState > 0) { // Assume 0 is initial state, >0 means clicked
+            mapInstance?.let { map ->
+                val target = LatLng.from(currentLocation.first, currentLocation.second)
+                map.moveCamera(CameraUpdateFactory.newCenterPosition(target))
+                Log.d("KakaoMap", "User Triggered Move to $target")
             }
         }
     }
     
-    // Update markers when zones change or map becomes ready
+    // 3. Update markers when zones change (Does NOT move camera)
     LaunchedEffect(mapInstance, zones) {
         val map = mapInstance ?: return@LaunchedEffect
-        val labelManager = map.labelManager ?: return@ServiceLoader.load(java.classOf[java.lang.Thread.State],Thread.State.getClassLoader).iterator.next
+        val labelManager = map.labelManager ?: return@LaunchedEffect
         
         // Explicitly create a layer with a unique ID
         val layerId = "zone_layer"
@@ -79,7 +94,7 @@ fun KakaoMap(
         // Use Nugul Logo as marker
         val bitmap = BitmapFactory.decodeResource(context.resources, com.example.neogulmap.R.drawable.ic_marker_nugul)
         
-        // Resize bitmap if too large (Optional, but good practice for map markers)
+        // Resize bitmap if too large
         val scaledBitmap = if (bitmap != null) {
             val size = 100 // Target size in pixels
             Bitmap.createScaledBitmap(bitmap, size, size, true)
@@ -94,8 +109,6 @@ fun KakaoMap(
         
         zones.forEach { zone ->
             try {
-                // (Optional: If you want to distinguish types, you can create multiple styles)
-                
                 val latLng = LatLng.from(zone.latitude, zone.longitude)
                 val options = LabelOptions.from(latLng)
                     .setStyles(styles)
@@ -109,30 +122,7 @@ fun KakaoMap(
             }
         }
         
-        // Move camera to the first zone if available (after initial load, or if currentLocation is updated)
-        if (zones.isNotEmpty() && (map.cameraPosition?.position?.latitude == 0.0 && map.cameraPosition?.position?.longitude == 0.0)) { // Apply safe calls
-            val firstZone = zones[0]
-            val targetLatLng = LatLng.from(firstZone.latitude, firstZone.longitude)
-            
-            // Zoom level 12 for wider view
-            val cameraPosition = CameraPosition.from(
-                targetLatLng.latitude, 
-                targetLatLng.longitude, 
-                12, 
-                0.0, 
-                0.0, 
-                0.0
-            ) // Added missing parameters
-            map.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition))
-            Log.d("KakaoMap", "Moved camera to Lat: ${firstZone.latitude}, Lng: ${firstZone.longitude} with zoom 12")
-        }
-        
-        // Set listener
-        map.setOnLabelClickListener { kakaoMap, layer, label ->
-            val clickedZone = label.tag as? Zone
-            clickedZone?.let { onZoneClick(it) }
-            true
-        }
+        // NOTE: Camera movement logic removed from here to prevent fighting with user controls
     }
     
     Box(modifier = modifier) {
@@ -157,6 +147,7 @@ fun KakaoMap(
                                 Log.d("KakaoMap", "Map Ready")
                                 mapInstance = kakaoMap
                             }
+                            // Removed overrides for getPosition/getZoomLevel to rely on explicit move logic
                         }
                     )
                 } catch (e: Exception) {
@@ -169,7 +160,5 @@ fun KakaoMap(
                 // Update logic if needed for view properties
             }
         )
-        
-        // The FloatingActionButton for current location is now in HomeScreen.kt
     }
 }

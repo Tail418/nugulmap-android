@@ -40,3 +40,5 @@ backend/.env
 # /frontend/  <-- Commenting this out just in case you wanted to commit frontend source code. 
 # If you want to ignore the whole frontend folder, uncomment it. 
 # But for now, I will let specific rules handle node_modules inside it.
+# Documentation
+docs/

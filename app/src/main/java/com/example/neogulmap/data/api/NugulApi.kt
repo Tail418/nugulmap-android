@@ -36,7 +36,7 @@ interface NugulApi {
     @Multipart
     @POST("zones") // Assuming this is the correct endpoint for creating zones
     suspend fun createZone(
-        @Part("zoneData") zoneData: RequestBody, // Zone data in JSON format
+        @Part("data") zoneData: RequestBody, // Zone data in JSON format
         @Part imageFile: MultipartBody.Part? // Optional image file
     ): ApiResponse<ZoneDto> // Assuming ZoneDto is returned after creation
 }
