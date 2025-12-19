@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.math.*
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -39,16 +38,9 @@ class HomeViewModel @Inject constructor(
             _errorMessage.value = null
             getZonesUseCase(latitude, longitude, radius).collect { result ->
                 Log.d("HomeViewModel", "Collecting result: $result")
-                result.onSuccess { allZones ->
-                    val filteredZones = if (latitude != 0.0 || longitude != 0.0) { // Only filter if a valid location is provided
-                        allZones.filter { zone ->
-                            calculateDistance(latitude, longitude, zone.latitude, zone.longitude) <= radius
-                        }
-                    } else {
-                        allZones // If lat/lon are default, show all zones
-                    }
-                    Log.d("HomeViewModel", "Zones loaded successfully: ${filteredZones.size} zones (filtered)")
-                    _zones.value = filteredZones
+                result.onSuccess { zoneList ->
+                    Log.d("HomeViewModel", "Zones loaded successfully: ${zoneList.size} zones")
+                    _zones.value = zoneList
                     _isLoading.value = false
                 }.onFailure { e ->
                     val msg = "Failed to load zones: ${e.message}"
@@ -59,17 +51,5 @@ class HomeViewModel @Inject constructor(
             }
             Log.d("HomeViewModel", "loadZones finished collecting.")
         }
-    }
-
-    // Haversine formula for distance calculation (more accurate than planar, but still an approximation)
-    private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
-        val R = 6371000.0 // Earth's mean radius in meters
-        val dLat = Math.toRadians(lat2 - lat1)
-        val dLon = Math.toRadians(lon2 - lon1)
-        val a = sin(dLat / 2) * sin(dLat / 2) +
-                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
-                sin(dLon / 2) * sin(dLon / 2)
-        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-        return R * c // Distance in meters
     }
 }
