@@ -14,17 +14,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
-// import androidx.compose.material3.CircularProgressIndicator // Temporarily commented out
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,11 +49,13 @@ import com.example.neogulmap.presentation.viewmodel.HomeViewModel
 
 import com.example.neogulmap.presentation.ui.components.ProfileMenuItem
 import com.example.neogulmap.presentation.ui.components.CurrentLocationButton // Import CurrentLocationButton
+import com.example.neogulmap.presentation.ui.components.AddLocationModal // Import AddLocationModal
 import com.google.android.gms.location.LocationServices // Import LocationServices
 import com.google.android.gms.location.LocationRequest // Import LocationRequest
 import com.google.android.gms.location.LocationCallback // Import LocationCallback
 import com.google.android.gms.location.LocationResult // Import LocationResult
 import com.google.android.gms.location.Priority // Import Priority for LocationRequest
+import com.kakao.vectormap.LatLng // Import LatLng for map long click
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,6 +74,11 @@ fun HomeScreen(
     
     // State to hold current map center (initially Seoul, updated by actual location)
     var currentMapCenter by remember { mutableStateOf(Pair(37.5665, 126.9780)) } // Default: Seoul
+
+    // State for AddLocationModal
+    var showAddLocationModal by remember { mutableStateOf(false) }
+    var newZoneLatLng by remember { mutableStateOf<LatLng?>(null) }
+
 
     // Permission launcher for location
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -118,6 +127,10 @@ fun HomeScreen(
             onZoneClick = { zone ->
                 selectedZone = zone
             },
+            onMapLongClick = { latLng ->
+                newZoneLatLng = latLng
+                showAddLocationModal = true
+            },
             currentLocation = currentMapCenter // Pass current location to map
         )
         
@@ -150,10 +163,11 @@ fun HomeScreen(
             }
         }
         
+        // Current Location Button (bottom end)
         CurrentLocationButton(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(16.dp),
+                .padding(bottom = 80.dp, end = 16.dp), // Adjust padding to make space for Add button
             onCurrentLocationClick = {
                 val fineLocationGranted = ContextCompat.checkSelfPermission(
                     context, Manifest.permission.ACCESS_FINE_LOCATION
@@ -170,7 +184,7 @@ fun HomeScreen(
                         } ?: run {
                             requestLocationUpdates(fusedLocationClient, context) { newLocation ->
                                 currentMapCenter = Pair(newLocation.latitude, newLocation.longitude)
-                                viewModel.loadZones(newLocation.latitude, newLocation.longitude)
+                                viewModel.loadZones(newLocation.latitude, newZoneLatLng = null)
                             }
                         }
                     }
@@ -185,6 +199,19 @@ fun HomeScreen(
             }
         )
         
+        // Add Smoking Zone Floating Action Button (bottom end, above current location button)
+        FloatingActionButton(
+            onClick = { 
+                newZoneLatLng = null // Reset LatLng for manual input or map long-press
+                showAddLocationModal = true 
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 16.dp, end = 16.dp)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Add Smoking Zone")
+        }
+
         if (selectedZone != null) {
             ModalBottomSheet(
                 onDismissRequest = { selectedZone = null },
@@ -244,6 +271,17 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
             }
+        }
+
+        if (showAddLocationModal) {
+            AddLocationModal(
+                initialLatLng = newZoneLatLng,
+                onDismiss = { showAddLocationModal = false },
+                onAddLocation = { lat, lon, name, address, type, imageUri ->
+                    viewModel.createZone(lat, lon, name, address, type, "current_user_id", imageUri) // TODO: Get actual user ID
+                    showAddLocationModal = false
+                }
+            )
         }
     }
 }
