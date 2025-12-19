@@ -28,11 +28,11 @@ interface NugulApi {
     suspend fun getLoginUrls(): ApiResponse<LoginUrlsData>
 
     @Multipart
-    @POST("users")
-    suspend fun createUser(
-        @Part("userData") userData: RequestBody,
-        @Part profileImage: MultipartBody.Part?
-    ): ApiResponse<Unit> // Assuming Unit or UserDto return
+    @POST("zones") // Assuming this is the endpoint for creating zones
+    suspend fun createZone(
+        @Part("zoneData") zoneData: RequestBody, // Zone data in JSON format
+        @Part imageFile: MultipartBody.Part? // Optional image file
+    ): ApiResponse<ZoneDto> // Assuming ZoneDto is returned after creation
 }
 
 data class PagedZoneData(

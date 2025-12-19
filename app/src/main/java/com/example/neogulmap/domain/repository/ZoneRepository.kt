@@ -30,7 +30,7 @@ interface ZoneRepository {
         name: String,
         address: String,
         type: String,
-        userId: String,
-        imageFile: File?
+        userId: String, // Assuming userId is part of the zone creation
+        imageUri: android.net.Uri? // Use Uri for image file
     ): Result<Zone>
 }

@@ -1,10 +1,10 @@
-package com.example.neogulmap.presentation.viewmodel
-
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.neogulmap.domain.model.Zone
 import com.example.neogulmap.domain.usecase.GetZonesUseCase
+import com.example.neogulmap.domain.repository.ZoneRepository // Import ZoneRepository for createZone
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +14,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val getZonesUseCase: GetZonesUseCase
+    private val getZonesUseCase: GetZonesUseCase,
+    private val zoneRepository: ZoneRepository // Inject ZoneRepository for createZone
 ) : ViewModel() {
 
     private val _zones = MutableStateFlow<List<Zone>>(emptyList())
@@ -50,6 +51,39 @@ class HomeViewModel @Inject constructor(
                 }
             }
             Log.d("HomeViewModel", "loadZones finished collecting.")
+        }
+    }
+
+    fun createZone(
+        latitude: Double,
+        longitude: Double,
+        name: String,
+        address: String,
+        type: String,
+        userId: String,
+        imageUri: Uri?
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true // Indicate that a new operation is starting
+            _errorMessage.value = null
+            try {
+                val result = zoneRepository.createZone(latitude, longitude, name, address, type, userId, imageUri)
+                result.onSuccess { newZone ->
+                    Log.d("HomeViewModel", "Zone created successfully: ${newZone.name}")
+                    // After creating a new zone, refresh the list of zones
+                    loadZones(latitude, longitude) // Reload zones based on current view location
+                }.onFailure { e ->
+                    val msg = "Failed to create zone: ${e.message}"
+                    Log.e("HomeViewModel", msg, e)
+                    _errorMessage.value = msg
+                    _isLoading.value = false
+                }
+            } catch (e: Exception) {
+                val msg = "Error creating zone: ${e.message}"
+                Log.e("HomeViewModel", msg, e)
+                _errorMessage.value = msg
+                _isLoading.value = false
+            }
         }
     }
 }
