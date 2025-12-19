@@ -1,20 +1,38 @@
 package com.example.neogulmap.presentation.ui.components
 
-import kotlinx.coroutines.channels.awaitClose
-import com.kakao.vectormap.MapType
-import com.kakao.vectormap.label.Label
-import com.kakao.vectormap.label.LabelManager
-import com.kakao.vectormap.mapwidget.InfoWindowOptions
-import com.kakao.vectormap.mapwidget.infoWindow.InfoWindow
-import com.kakao.vectormap.mapwidget.infoWindow.InfoWindowLayer
-import com.kakao.vectormap.mapwidget.infoWindow.InfoWindowLayerOptions
-import com.kakao.vectormap.mapwidget.infoWindow.InfoWindowOptions.InfoWindowAnchor
-import com.kakao.vectormap.mapwidget.infoWindow.InfoWindowPosition
-import com.kakao.vectormap.mapwidget.infoWindow.InfowindowContent
-import com.kakao.vectormap.mapwidget.infoWindow.DefaultInfowindowContent
-import com.kakao.vectormap.mapwidget.maptype.MapTypeControlOption
-import com.kakao.vectormap.mapwidget.scale.ScaleBarControlOption
-import com.kakao.vectormap.mapwidget.zoom.ZoomControlOption
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.Log
+import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import com.example.neogulmap.domain.model.Zone
+import com.example.neogulmap.presentation.util.MapUtils
+import com.kakao.vectormap.KakaoMap
+import com.kakao.vectormap.KakaoMapReadyCallback
+import com.kakao.vectormap.LatLng
+import com.kakao.vectormap.MapLifeCycleCallback
+import com.kakao.vectormap.MapView
+import com.kakao.vectormap.camera.CameraPosition
+import com.kakao.vectormap.camera.CameraUpdateFactory
+import com.kakao.vectormap.label.LabelLayerOptions
+import com.kakao.vectormap.label.LabelOptions
+import com.kakao.vectormap.label.LabelStyle
+import com.kakao.vectormap.label.LabelStyles
 
 
 @Composable
