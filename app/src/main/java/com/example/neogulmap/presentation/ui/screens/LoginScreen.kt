@@ -139,6 +139,29 @@ fun LoginScreen(
                             color = MaterialTheme.colorScheme.primary
                         )
 
+                        Spacer(modifier = Modifier.height(32.dp))
+
+                        // Kakao Login Button
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    if (UserApiClient.instance.isKakaoTalkLoginAvailable(context)) {
+                                        UserApiClient.instance.loginWithKakaoTalk(context, callback = kakaoCallback)
+                                    } else {
+                                        UserApiClient.instance.loginWithKakaoAccount(context, callback = kakaoCallback)
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = KakaoYellow),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "카카오로 로그인",
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
