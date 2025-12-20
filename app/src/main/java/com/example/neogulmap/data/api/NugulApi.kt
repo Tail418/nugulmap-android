@@ -1,7 +1,10 @@
 package com.example.neogulmap.data.api
 
 import com.example.neogulmap.data.model.ApiResponse
+import com.example.neogulmap.data.model.AuthRequestDto
+import com.example.neogulmap.data.model.AuthResponseDto
 import com.example.neogulmap.data.model.ZoneDto
+import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Query
 
@@ -26,6 +29,11 @@ interface NugulApi {
 
     @GET("oauth2/login-urls")
     suspend fun getLoginUrls(): ApiResponse<LoginUrlsData>
+
+    @POST("api/auth/login/kakao")
+    suspend fun loginWithKakao(
+        @Body request: AuthRequestDto
+    ): ApiResponse<AuthResponseDto>
 
     @Multipart
     @POST("users")

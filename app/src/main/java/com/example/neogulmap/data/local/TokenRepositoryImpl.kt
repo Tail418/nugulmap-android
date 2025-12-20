@@ -1,43 +1,22 @@
 package com.example.neogulmap.data.local
 
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
-object PreferencesKeys {
-    val ACCESS_TOKEN = stringPreferencesKey("access_token")
-    val REFRESH_TOKEN = stringPreferencesKey("refresh_token")
-}
-
 class TokenRepositoryImpl @Inject constructor(
-    private val dataStore: DataStore<Preferences>
+    private val tokenManager: TokenManager
 ) : TokenRepository {
 
     override suspend fun saveAccessToken(token: String) {
-        dataStore.edit { preferences ->
-            preferences[PreferencesKeys.ACCESS_TOKEN] = token
-        }
+        // userId는 0으로 기본값 (추후 필요시 확장)
+        tokenManager.saveToken(token, 0)
     }
 
     override suspend fun saveRefreshToken(token: String) {
-        dataStore.edit { preferences ->
-            preferences[PreferencesKeys.REFRESH_TOKEN] = token
-        }
+        // Refresh token logic not fully implemented in TokenManager yet
     }
 
-    override fun getAccessToken(): Flow<String?> {
-        return dataStore.data.map { preferences ->
-            preferences[PreferencesKeys.ACCESS_TOKEN]
-        }
-    }
+    override fun getAccessToken(): Flow<String?> = tokenManager.accessToken
 
-    override fun getRefreshToken(): Flow<String?> {
-        return dataStore.data.map { preferences ->
-            preferences[PreferencesKeys.REFRESH_TOKEN]
-        }
-    }
+    override fun getRefreshToken(): Flow<String?> = tokenManager.accessToken // Temporarily using same flow
 }

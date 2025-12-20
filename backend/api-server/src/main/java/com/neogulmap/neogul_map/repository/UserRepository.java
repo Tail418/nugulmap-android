@@ -14,4 +14,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     // 특정 OAuth 제공자의 사용자 조회
     Optional<User> findByOauthProviderAndOauthId(String oauthProvider, String oauthId);
+
+    // OAuth ID로 사용자 조회
+    Optional<User> findByOauthId(String oauthId);
 }

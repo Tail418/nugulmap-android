@@ -2,9 +2,8 @@ package com.example.neogulmap.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.neogulmap.domain.usecase.LoginUseCase
-import com.example.neogulmap.domain.usecase.SaveTokenUseCase
-import com.kakao.sdk.user.model.User
+import com.example.neogulmap.domain.repository.AuthRepository
+import com.kakao.sdk.auth.model.OAuthToken
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,14 +19,13 @@ sealed interface LoginUiState {
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val loginUseCase: LoginUseCase,
-    private val saveTokenUseCase: SaveTokenUseCase
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
     val uiState = _uiState.asStateFlow()
 
-    fun handleKakaoLoginResult(user: User?, error: Throwable?) {
+    fun handleKakaoLoginWithToken(token: OAuthToken?, error: Throwable?) {
         viewModelScope.launch {
             _uiState.value = LoginUiState.Loading
 
@@ -36,95 +34,20 @@ class LoginViewModel @Inject constructor(
                 return@launch
             }
 
-            if (user?.id != null) {
-                val oauthId = user.id.toString()
-                val nickname = user.kakaoAccount?.profile?.nickname ?: "Nugul User"
-                val email = user.kakaoAccount?.email ?: ""
-
-                val loginResult = loginUseCase(
-                    oauthId = oauthId,
-                    email = email,
-                    nickname = nickname,
-                    provider = "kakao"
-                )
+            if (token != null) {
+                val loginResult = authRepository.loginWithKakao(token.accessToken)
 
                 loginResult.onSuccess {
-                    val fakeAccessToken = "fake_access_token_from_backend"
-                    val fakeRefreshToken = "fake_refresh_token_from_backend"
-                    saveTokenUseCase(fakeAccessToken, fakeRefreshToken)
-                    
                     _uiState.value = LoginUiState.Success
-                    
                 }.onFailure { backendError ->
-                    _uiState.value = LoginUiState.Error(backendError.message ?: "알 수 없는 백엔드 에러가 발생했습니다.")
+                    _uiState.value = LoginUiState.Error(backendError.message ?: "서버 로그인에 실패했습니다.")
                 }
-
             } else {
-                _uiState.value = LoginUiState.Error("카카오 로그인 사용자 정보 획득 실패.")
+                _uiState.value = LoginUiState.Error("카카오 토큰 획득 실패.")
             }
         }
     }
 
-    fun handleNaverLoginResult(oauthId: String?, nickname: String?, email: String?, error: Throwable?) {
-        viewModelScope.launch {
-            _uiState.value = LoginUiState.Loading
-
-            if (error != null) {
-                _uiState.value = LoginUiState.Error(error.message ?: "네이버 로그인 실패.")
-                return@launch
-            }
-
-            if (oauthId != null) {
-                val loginResult = loginUseCase(
-                    oauthId = oauthId,
-                    email = email ?: "",
-                    nickname = nickname ?: "Nugul User",
-                    provider = "naver"
-                )
-
-                loginResult.onSuccess {
-                    val fakeAccessToken = "fake_access_token_from_backend_naver"
-                    val fakeRefreshToken = "fake_refresh_token_from_backend_naver"
-                    saveTokenUseCase(fakeAccessToken, fakeRefreshToken)
-                    _uiState.value = LoginUiState.Success
-                }.onFailure { backendError ->
-                    _uiState.value = LoginUiState.Error(backendError.message ?: "알 수 없는 백엔드 에러가 발생했습니다.")
-                }
-            } else {
-                _uiState.value = LoginUiState.Error("네이버 로그인 사용자 정보 획득 실패.")
-            }
-        }
-    }
-
-    fun handleGoogleLoginResult(oauthId: String?, nickname: String?, email: String?, error: Throwable?) {
-        viewModelScope.launch {
-            _uiState.value = LoginUiState.Loading
-
-            if (error != null) {
-                _uiState.value = LoginUiState.Error(error.message ?: "구글 로그인 실패.")
-                return@launch
-            }
-
-            if (oauthId != null) {
-                val loginResult = loginUseCase(
-                    oauthId = oauthId,
-                    email = email ?: "",
-                    nickname = nickname ?: "Nugul User",
-                    provider = "google"
-                )
-
-                loginResult.onSuccess {
-                    val fakeAccessToken = "fake_access_token_from_backend_google"
-                    val fakeRefreshToken = "fake_refresh_token_from_backend_google"
-                    saveTokenUseCase(fakeAccessToken, fakeRefreshToken)
-                    _uiState.value = LoginUiState.Success
-                }.onFailure { backendError ->
-                    _uiState.value = LoginUiState.Error(backendError.message ?: "알 수 없는 백엔드 에러가 발생했습니다.")
-                }
-            } else {
-                _uiState.value = LoginUiState.Error("구글 로그인 사용자 정보 획득 실패.")
-            }
-        }
-    }
+    // Naver, Google 등도 동일한 방식으로 수정 가능 (생략 또는 필요시 추가)
 }
 

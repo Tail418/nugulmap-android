@@ -2,10 +2,10 @@ package com.example.neogulmap.di
 
 import com.example.neogulmap.data.repository.ZoneRepositoryImpl
 import com.example.neogulmap.domain.repository.ZoneRepository
+import com.example.neogulmap.data.repository.AuthRepositoryImpl
+import com.example.neogulmap.domain.repository.AuthRepository
 import com.example.neogulmap.data.local.TokenRepository
 import com.example.neogulmap.data.local.TokenRepositoryImpl
-import com.example.neogulmap.data.repository.UserRepositoryImpl
-import com.example.neogulmap.domain.repository.UserRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -24,9 +24,9 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindUserRepository(
-        userRepositoryImpl: UserRepositoryImpl
-    ): UserRepository
+    abstract fun bindAuthRepository(
+        authRepositoryImpl: AuthRepositoryImpl
+    ): AuthRepository
 
     @Binds
     @Singleton

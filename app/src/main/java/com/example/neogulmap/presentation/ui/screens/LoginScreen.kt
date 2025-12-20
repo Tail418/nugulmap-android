@@ -76,23 +76,16 @@ fun LoginScreen(
     }
     
     val kakaoCallback: (OAuthToken?, Throwable?) -> Unit = { token, error ->
-        if (error != null) {
-            if (error is ClientError && error.reason == ClientErrorCause.Cancelled) {
-                scope.launch { snackbarHostState.showSnackbar("카카오 로그인을 취소했습니다.") }
-            } else {
-                scope.launch { snackbarHostState.showSnackbar("로그인 실패: ${error.message}") }
-            }
-        } else if (token != null) {
-            UserApiClient.instance.me { user, meError ->
-                viewModel.handleKakaoLoginResult(user, meError)
-            }
-        }
+        viewModel.handleKakaoLoginWithToken(token, error)
     }
 
-
-
-
-
+    val onKakaoLoginClick = {
+        if (UserApiClient.instance.isKakaoTalkLoginAvailable(context)) {
+            UserApiClient.instance.loginWithKakaoTalk(context, callback = kakaoCallback)
+        } else {
+            UserApiClient.instance.loginWithKakaoAccount(context, callback = kakaoCallback)
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
@@ -113,7 +106,7 @@ fun LoginScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(bottom = 32.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                     shape = RoundedCornerShape(8.dp)
                 ) {
@@ -138,8 +131,25 @@ fun LoginScreen(
                             ),
                             color = MaterialTheme.colorScheme.primary
                         )
-
                     }
+                }
+
+                Button(
+                    onClick = onKakaoLoginClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = KakaoYellow,
+                        contentColor = Color.Black
+                    )
+                ) {
+                    Text(
+                        text = "카카오 로그인",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
 
