@@ -42,3 +42,6 @@ backend/.env
 # But for now, I will let specific rules handle node_modules inside it.
 # Documentation
 docs/
+
+# Source zip files
+소스코드_*.zip
